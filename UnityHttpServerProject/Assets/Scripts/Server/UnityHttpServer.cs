@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -225,11 +224,12 @@ namespace Server
                                 //this option is very generic and you can later expand to achieve a more stable code
                                 try
                                 {
-                                    var result = JObject.Parse(content);
+                                    //Convert the json into a struct of type ToggleObject
+                                    var result = JsonUtility.FromJson<ToggleObject>(content);
                                     DebugMessage($"Request JSON: {result}");
 
-                                    //Convert the index value from the JSON to an integer variable
-                                    var index = result["index"].ToObject<int>();
+                                    //Read the index value
+                                    var index = result.index;
                                     DebugMessage($"Index is {index}");
 
                                     //Clamp the index to be a valid index according to the List's content size

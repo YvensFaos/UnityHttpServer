@@ -1,9 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 namespace Client
@@ -122,29 +121,43 @@ namespace Client
             
             DebugMessage($"Sent command: {uri}");
             //Enqueue the async command to the get URL received
-            _responses.Enqueue(await _client.GetAsync(uri));
+            try
+            {
+                _responses.Enqueue(await _client.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                //Fall into this catch if a time out or connection issue happens
+                DebugMessage($"Error! Message: {e.Message}");
+            }
         }
 
         public void SendToggleObject(int index)
         {
             //Create a JSON with the data that should be sent
-            var json = new JObject {{"index", index}};
+            var json = JsonUtility.ToJson(new ToggleObject() {index = index});
             SendPost($"{_formattedUrl}/toggleObject", json);
         }
 
-        private async void SendPost(string uri, JObject json)
+        private async void SendPost(string uri, string content)
         {
             if (_client == null) return;
             
             //Encode the content as bytes, serializing the JSON
-            var content = JsonConvert.SerializeObject(json);
             var buffer = System.Text.Encoding.UTF8.GetBytes(content);
             var byteContent = new ByteArrayContent(buffer);
             //Mark the content type as JSON so the application knows how to deal with it
             byteContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            
-            //Enqueue the async command to the URL received
-            _responses.Enqueue(await _client.PostAsync(uri, byteContent));
+            try
+            {
+                //Enqueue the async command to the URL received
+                _responses.Enqueue(await _client.PostAsync(uri, byteContent));
+            }
+            catch (Exception e)
+            {
+                //Fall into this catch if a time out or connection issue happens
+                DebugMessage($"Error! Message: {e.Message}");
+            }
         }
         #endregion
         
