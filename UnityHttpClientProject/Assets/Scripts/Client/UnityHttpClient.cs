@@ -1,9 +1,9 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Client
 {
@@ -17,8 +17,10 @@ namespace Client
         [Header("Server related information")] 
         [SerializeField] private string url = $"localhost";
         [SerializeField] private int port = 8000;
-        
         [SerializeField] private bool initClientOnStart;
+
+        [Header("Example related")] 
+        [SerializeField] private List<Button> toggleObjects;
         
         [Header("Debug Related")] 
         [SerializeField] private bool debug;
@@ -26,7 +28,6 @@ namespace Client
         //Private variables
         private HttpClient _client;
         private string _formattedUrl;
-        private Queue<HttpResponseMessage> _responses;
         private bool _clientIsUp;
 
         public bool ClientIsUp => _clientIsUp;
@@ -60,70 +61,40 @@ namespace Client
             _formattedUrl = $"http://{url}:{port}";
             _clientIsUp = true;
             DebugMessage($"Starting up client to {_formattedUrl}");
-            
-            //Initialize the queue of responses. Every new response is added to the queue and handled in the order in
-            //which they entered the queue (First In, First Out).
-            _responses = new Queue<HttpResponseMessage>();
-            
-            //Initialize the client coroutine
-            StartCoroutine(ClientCoroutine());
         }
         
         public void StopClient()
         {
             if (!ClientIsUp) return;
             
-            //Stop the server and kill the server thread and coroutine.
-            StopAllCoroutines();
             _client = null;
             _clientIsUp = false;
         }
-        
-        /// <summary>
-        /// Server coroutine. It runs together with Unity's thread and makes sure that the requests are handled correctly.
-        /// </summary>
-        /// <returns></returns>
-        private IEnumerator ClientCoroutine()
-        {
-            while (ClientIsUp)
-            {
-                //Waits until there is at least 1 response to be handled.
-                yield return new WaitUntil(() => _responses.Count > 0);
-                //Iterates over the lists of responses removing them one by one until the queue is empty.
-                while (_responses.Count > 0)
-                {
-                    //Resolves the responses in the queue.
-                    ResolveResponse(_responses.Dequeue());
-                }
-            }
-        }
-        
-        private void ResolveResponse(HttpResponseMessage response)
-        {
-            //For now it is simply printing the response. You could expand this code to read the response's answer code
-            //and content and deal with each response separately according to your application.
-            DebugMessage(response.ToString());            
-        }
-        
+
         #region Client Commands
         public void SendPing()
         {
-            SendGet($"{_formattedUrl}/ping");
+            SendGet($"{_formattedUrl}/ping", DefaultResponse);
         }
         public void SendExecuteEvents()
         {
-            SendGet($"{_formattedUrl}/executeEvents");
+            SendGet($"{_formattedUrl}/executeEvents", DefaultResponse);
         }
 
-        private async void SendGet(string uri)
+        /// <summary>
+        /// Send a get request to the server and execute the callback when the response is received.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="callback"></param>
+        private async void SendGet(string uri, Action<HttpResponseMessage> callback)
         {
             if (_client == null) return; 
             
             DebugMessage($"Sent command: {uri}");
-            //Enqueue the async command to the get URL received
             try
             {
-                _responses.Enqueue(await _client.GetAsync(uri));
+                var response = await _client.GetAsync(uri);
+                callback(response);
             }
             catch (Exception e)
             {
@@ -132,14 +103,35 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Default reply for a message method in which the response is simply printed to the debug console.
+        /// </summary>
+        /// <param name="response"></param>
+        private void DefaultResponse(HttpResponseMessage response)
+        {
+            DebugMessage(response.ToString());
+        }
+
         public void SendToggleObject(int index)
         {
             //Create a JSON with the data that should be sent
-            var json = JsonUtility.ToJson(new ToggleObject() {index = index});
-            SendPost($"{_formattedUrl}/toggleObject", json);
+            var json = JsonUtility.ToJson(new ToggleObject {index = index});
+            
+            SendPost($"{_formattedUrl}/toggleObject", json, (async (HttpResponseMessage httpResponseMessage) =>
+            {
+                //Read the content of the response message
+                var readAsStringAsync = await httpResponseMessage.Content.ReadAsStringAsync();
+                DebugMessage(readAsStringAsync);
+                
+                //Get the response message as a ToggleStatus struct
+                var toggleStatus = JsonUtility.FromJson<ToggleStatus>(readAsStringAsync);
+                
+                //Apply the changes to the game screen
+                toggleObjects[toggleStatus.index].image.color = toggleStatus.active ? Color.green : Color.red;
+            }));
         }
 
-        private async void SendPost(string uri, string content)
+        private async void SendPost(string uri, string content, Action<HttpResponseMessage> callback)
         {
             if (_client == null) return;
             
@@ -148,10 +140,11 @@ namespace Client
             var byteContent = new ByteArrayContent(buffer);
             //Mark the content type as JSON so the application knows how to deal with it
             byteContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            
             try
             {
-                //Enqueue the async command to the URL received
-                _responses.Enqueue(await _client.PostAsync(uri, byteContent));
+                var response = await _client.PostAsync(uri, byteContent);
+                callback(response);
             }
             catch (Exception e)
             {

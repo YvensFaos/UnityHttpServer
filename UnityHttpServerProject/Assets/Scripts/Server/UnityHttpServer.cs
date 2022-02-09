@@ -154,6 +154,10 @@ namespace Server
             
             DebugMessage($"Method {method} - Local Path: {localPath}");
             DebugMessage($"Content Type {contentType} - Content: {content}");
+                    
+            //Hardcoded response back to 200 (Success according to HTTP). Ideally you want to move this back to the
+            //switch-statement before this and use a proper code depending on each case.
+            request.Response.StatusCode = 200;
 
             //Solve the request. This is a RESTfull like approach:
             // GET:   methods are simple commands with one line and no content. Useful for pings, tests, and other requests
@@ -235,9 +239,23 @@ namespace Server
                                     //Clamp the index to be a valid index according to the List's content size
                                     var clampedIndex = Mathf.Clamp(index, 0, toggleObjects.Count - 1);
                                     DebugMessage($"Clamped index is {clampedIndex}");
+
+                                    var active = !toggleObjects[clampedIndex].activeSelf;
                                     
                                     //Toggle the active state of the object from the given index
-                                    toggleObjects[clampedIndex].SetActive(!toggleObjects[clampedIndex].activeSelf);
+                                    toggleObjects[clampedIndex].SetActive(active);
+
+                                    //Reply to the request with a ToggleStatus struct in the form of a JSON
+                                    var responseJson = JsonUtility.ToJson(new ToggleStatus {active = active, index = index});
+                                    
+                                    //Transforms the json into a byte array buffer
+                                    var buffer = System.Text.Encoding.UTF8.GetBytes(responseJson);
+                                    //Sets the response content length
+                                    request.Response.ContentLength64 = buffer.Length;
+                                    //Writes the byte array into the response
+                                    request.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                                    //Closes the response data
+                                    request.Response.OutputStream.Close();
                                 }
                                 catch (Exception e)
                                 {
@@ -257,11 +275,7 @@ namespace Server
         request.Response.AppendHeader("Access-Control-Allow-Credentials", "true");
         request.Response.AppendHeader("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-File-Name");
         request.Response.AppendHeader("Access-Control-Allow-Methods", "POST,GET,PUT,PATCH,DELETE,OPTIONS");
-        
-        //Hardcoded response back to 200 (Success according to HTTP). Ideally you want to move this back to the
-        //switch-statement before this and use a proper code depending on each case.
-        request.Response.StatusCode = 200;
-        
+
         //Close the response back to the sender.
         request.Response.Close();
     }

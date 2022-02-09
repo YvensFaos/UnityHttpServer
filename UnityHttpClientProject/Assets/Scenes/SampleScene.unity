@@ -469,6 +469,10 @@ MonoBehaviour:
   url: localhost
   port: 8000
   initClientOnStart: 1
+  toggleObjects:
+  - {fileID: 307541763}
+  - {fileID: 577347357}
+  - {fileID: 1519888459}
   debug: 1
 --- !u!4 &524608949
 Transform:
