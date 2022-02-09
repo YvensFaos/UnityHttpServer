@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -24,6 +25,7 @@ namespace Server
 
         [Header("Example related")] 
         [SerializeField] private UnityEvent exampleEvents;
+        [SerializeField] private List<GameObject> toggleObjects;
         
         [Header("Debug Related")] 
         [SerializeField] private bool debug;
@@ -159,7 +161,7 @@ namespace Server
             //        require the request to send additional information, such as sending player information.
             switch (method)
             {
-                case "GET": //REST
+                case "GET":
                 {
                     switch (localPath)
                     {
@@ -194,8 +196,55 @@ namespace Server
                     break;
                 case "POST":
                 {
+                    switch (localPath)
+                    {
+                        case "/toggleObject":
+                        {
+                            /*
+                             * Example of command to test on the terminal using CURL
+                             * curl -X POST http://localhost:8000/toggleObject -H 'Content-Type: application/json' -d '{"index":1}'
+                             *
+                             * Using the index as a string will also work. The parse will manage to parse the string to an int
+                             * curl -X POST http://localhost:8000/toggleObject -H 'Content-Type: application/json' -d '{"index":"1"}'
+                             *
+                             * The try-catch avoids breaking the application if the json is badly formatted or if the fields are not correct
+                             * curl -X POST http://localhost:8000/toggleObject -H 'Content-Type: application/json' -d '{"index":"test}'
+                             * The command above will trigger the catch and show the error message, but the server will continue just fine
+                             *
+                             * Post commands cannot be executed with a simple URL on the browser.
+                             */
 
-                    
+                            //Verifies if the content is not null and if the content of the request is a JSON
+                            if (contentType != null && contentType.Equals("application/json"))
+                            {
+                                DebugMessage($"Content: {content}");
+                                
+                                //There are way better ways to parse a JSON into a consistent struct or C# class, but 
+                                //this option is very generic and you can later expand to achieve a more stable code
+                                try
+                                {
+                                    var result = JObject.Parse(content);
+                                    DebugMessage($"Request JSON: {result}");
+
+                                    //Convert the index value from the JSON to an integer variable
+                                    var index = result["index"].ToObject<int>();
+                                    DebugMessage($"Index is {index}");
+
+                                    //Clamp the index to be a valid index according to the List's content size
+                                    var clampedIndex = Mathf.Clamp(index, 0, toggleObjects.Count - 1);
+                                    DebugMessage($"Clamped index is {clampedIndex}");
+                                    
+                                    //Toggle the active state of the object from the given index
+                                    toggleObjects[clampedIndex].SetActive(!toggleObjects[clampedIndex].activeSelf);
+                                }
+                                catch (Exception e)
+                                {
+                                    DebugMessage($"Parsing gone wrong. Exception: {e.Message}");
+                                }
+                            }
+                        }
+                        break;
+                    }
                 }
                 break;
         }
