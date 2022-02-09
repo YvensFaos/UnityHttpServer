@@ -118,6 +118,8 @@ namespace Client
 
         private async void SendGet(string uri)
         {
+            if (_client == null) return; 
+            
             DebugMessage($"Sent command: {uri}");
             //Enqueue the async command to the get URL received
             _responses.Enqueue(await _client.GetAsync(uri));
@@ -132,6 +134,8 @@ namespace Client
 
         private async void SendPost(string uri, JObject json)
         {
+            if (_client == null) return;
+            
             //Encode the content as bytes, serializing the JSON
             var content = JsonConvert.SerializeObject(json);
             var buffer = System.Text.Encoding.UTF8.GetBytes(content);
