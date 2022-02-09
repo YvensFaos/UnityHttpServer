@@ -371,7 +371,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: New Text
+  m_Text: Toggle 0
 --- !u!222 &307541764
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -411,7 +411,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   url: localhost
   port: 8000
-  serverIsUp: 0
   initServerOnStart: 1
   exampleEvents:
     m_PersistentCalls:
@@ -517,7 +516,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: New Text
+  m_Text: Toggle 1
 --- !u!222 &577347358
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -819,7 +818,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: New Text
+  m_Text: Toggle 2
 --- !u!222 &1519888460
 CanvasRenderer:
   m_ObjectHideFlags: 0

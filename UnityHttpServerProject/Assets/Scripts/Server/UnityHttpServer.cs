@@ -20,7 +20,6 @@ namespace Server
         [Header("Server related information")] 
         [SerializeField] private string url = $"localhost";
         [SerializeField] private int port = 8000;
-        [SerializeField] private bool serverIsUp;
         [SerializeField] private bool initServerOnStart;
 
         [Header("Example related")] 
@@ -34,6 +33,9 @@ namespace Server
         private HttpListener _listener;
         private Thread _serverThread;
         private Queue<HttpListenerContext> _requests;
+        private bool _serverIsUp;
+
+        public bool ServerIsUp => _serverIsUp;
 
         private void Awake()
         {
@@ -57,7 +59,7 @@ namespace Server
 
         public void InitializeServer()
         {
-            if (serverIsUp) return;
+            if (ServerIsUp) return;
             
             //Initialize server at the URL and Port set in the Editor
             var serverUrl = $"http://{url}:{port}/";
@@ -68,7 +70,7 @@ namespace Server
             _listener.Start();
             DebugMessage($"Listening for connections on: {serverUrl}");
 
-            serverIsUp = true;
+            _serverIsUp = true;
 
             //Initialize the server thread
             _serverThread = new Thread(StartServerThread);
@@ -84,13 +86,13 @@ namespace Server
 
         public void StopServer()
         {
-            if (!serverIsUp) return;
+            if (!ServerIsUp) return;
             
             //Stop the server and kill the server thread and coroutine.
             _serverThread.Abort();
             StopAllCoroutines();
             _listener.Stop();
-            serverIsUp = false;
+            _serverIsUp = false;
         }
 
         /// <summary>
@@ -99,7 +101,7 @@ namespace Server
         /// </summary>
         private void StartServerThread()
         {
-            while (serverIsUp)
+            while (ServerIsUp)
             {
                 var result = _listener.BeginGetContext(ServerCallback, _listener);
                 result.AsyncWaitHandle.WaitOne();
@@ -124,7 +126,7 @@ namespace Server
         /// <returns></returns>
         private IEnumerator ServerCoroutine()
         {
-            while (serverIsUp)
+            while (ServerIsUp)
             {
                 //Waits until there is at least 1 request to be handled.
                 yield return new WaitUntil(() => _requests.Count > 0);

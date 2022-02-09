@@ -18,7 +18,7 @@ namespace Client
         [Header("Server related information")] 
         [SerializeField] private string url = $"localhost";
         [SerializeField] private int port = 8000;
-        [SerializeField] private bool clientIsUp;
+        
         [SerializeField] private bool initClientOnStart;
         
         [Header("Debug Related")] 
@@ -28,7 +28,22 @@ namespace Client
         private HttpClient _client;
         private string _formattedUrl;
         private Queue<HttpResponseMessage> _responses;
+        private bool _clientIsUp;
 
+        public bool ClientIsUp => _clientIsUp;
+
+        private void Awake()
+        {
+            if (_instance != null)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            _instance = this;
+            DontDestroyOnLoad(this);
+        }
+        
         private void Start()
         {
             if (initClientOnStart)
@@ -39,16 +54,30 @@ namespace Client
         
         public void InitializeClient()
         {
-            if (clientIsUp) return;
+            if (ClientIsUp) return;
             
+            //Initialize client and stores the URL that is going to be used
             _client = new HttpClient();
             _formattedUrl = $"http://{url}:{port}";
-            clientIsUp = true;
-            
+            _clientIsUp = true;
             DebugMessage($"Starting up client to {_formattedUrl}");
             
+            //Initialize the queue of responses. Every new response is added to the queue and handled in the order in
+            //which they entered the queue (First In, First Out).
             _responses = new Queue<HttpResponseMessage>();
+            
+            //Initialize the client coroutine
             StartCoroutine(ClientCoroutine());
+        }
+        
+        public void StopClient()
+        {
+            if (!ClientIsUp) return;
+            
+            //Stop the server and kill the server thread and coroutine.
+            StopAllCoroutines();
+            _client = null;
+            _clientIsUp = false;
         }
         
         /// <summary>
@@ -57,7 +86,7 @@ namespace Client
         /// <returns></returns>
         private IEnumerator ClientCoroutine()
         {
-            while (clientIsUp)
+            while (ClientIsUp)
             {
                 //Waits until there is at least 1 response to be handled.
                 yield return new WaitUntil(() => _responses.Count > 0);
@@ -72,6 +101,8 @@ namespace Client
         
         private void ResolveResponse(HttpResponseMessage response)
         {
+            //For now it is simply printing the response. You could expand this code to read the response's answer code
+            //and content and deal with each response separately according to your application.
             DebugMessage(response.ToString());            
         }
         
@@ -88,22 +119,27 @@ namespace Client
         private async void SendGet(string uri)
         {
             DebugMessage($"Sent command: {uri}");
+            //Enqueue the async command to the get URL received
             _responses.Enqueue(await _client.GetAsync(uri));
         }
 
         public void SendToggleObject(int index)
         {
+            //Create a JSON with the data that should be sent
             var json = new JObject {{"index", index}};
             SendPost($"{_formattedUrl}/toggleObject", json);
         }
 
         private async void SendPost(string uri, JObject json)
         {
+            //Encode the content as bytes, serializing the JSON
             var content = JsonConvert.SerializeObject(json);
             var buffer = System.Text.Encoding.UTF8.GetBytes(content);
             var byteContent = new ByteArrayContent(buffer);
+            //Mark the content type as JSON so the application knows how to deal with it
             byteContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             
+            //Enqueue the async command to the URL received
             _responses.Enqueue(await _client.PostAsync(uri, byteContent));
         }
         #endregion
