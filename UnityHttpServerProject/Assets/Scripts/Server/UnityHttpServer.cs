@@ -246,7 +246,7 @@ namespace Server
                                     toggleObjects[clampedIndex].SetActive(active);
 
                                     //Reply to the request with a ToggleStatus struct in the form of a JSON
-                                    var responseJson = JsonUtility.ToJson(new ToggleStatus {active = active, index = index});
+                                    var responseJson = JsonUtility.ToJson(new ToggleStatus {active = active, index = clampedIndex});
                                     
                                     //Transforms the json into a byte array buffer
                                     var buffer = System.Text.Encoding.UTF8.GetBytes(responseJson);
